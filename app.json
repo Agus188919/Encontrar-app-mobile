@@ -60,6 +60,18 @@
           "locationWhenInUsePermission": "Permitir a Comercios CdelU ordenar locales por distancia."
         }
       ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir a Encontrar verificar tu identidad para validar cupones."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir a Encontrar seleccionar fotos de tu galería para el comercio."
+        }
+      ],
       "expo-secure-store",
       "expo-sqlite",
       "expo-video",

@@ -63,7 +63,7 @@ export default function PantallaMapa() {
           ? { latitud: loc.coords.latitude, longitud: loc.coords.longitude }
           : COORDENADAS_CENTRO_CDELU
       );
-    } catch (e) {
+    } catch {
       setPermisoUbicacionConcedido(false);
     }
   };
@@ -71,7 +71,7 @@ export default function PantallaMapa() {
   const cargarDatos = async () => {
     try {
       const [resComercios, resRubros] = await Promise.all([
-        servicioComercios.listar(),
+        servicioComercios.listar({ porPagina: 200 }),
         servicioComercios.obtenerRubros(),
       ]);
       setComercios(resComercios.datos);
@@ -110,7 +110,7 @@ export default function PantallaMapa() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={[{ id: 'todos', nombre: 'Todos', color: '#1E293B' }, ...rubros]}
+          data={[{ id: 'todos', nombre: 'Todos', color: '#1E293B', icono: '', orden: 0 }, ...rubros]}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
             const activo =
