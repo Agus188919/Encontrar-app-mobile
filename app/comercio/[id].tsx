@@ -32,6 +32,7 @@ import {
     UsoDePromocion,
 } from '../../src/tipos';
 import { obtenerTagsProductos } from '../../src/utils/productos';
+import { estaAbiertoAhora } from '../../src/utils/horarios';
 
 function ReproductorPresentacion({ url }: { url: string }) {
     const player = useVideoPlayer(url, (p) => {
@@ -49,7 +50,6 @@ function ReproductorPresentacion({ url }: { url: string }) {
         </View>
     );
 }
-
 
 export default function FichaComercioScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -173,7 +173,7 @@ export default function FichaComercioScreen() {
         if (comercio?.whatsapp) {
             Haptics.selectionAsync();
             const url = `https://wa.me/${comercio.whatsapp}?text=${encodeURIComponent(
-                'Hola! Los contacto desde la App de Encontar, Entre Rios.'
+                'Hola! Los contacto desde la App de Encontrar, Entre Rios.'
             )}`;
             Linking.openURL(url);
         } else {
@@ -331,6 +331,13 @@ export default function FichaComercioScreen() {
         );
     }
 
+    const estaDeVacaciones = Boolean(
+        (comercio as Comercio & { cerradoHasta?: string | null }).cerradoHasta
+    );
+    const estadoHorario = estaDeVacaciones
+        ? { abierto: false, mensaje: 'Cerrado por vacaciones' }
+        : estaAbiertoAhora(comercio.horarios);
+
     const formatearDia = (dia: number): string => {
         const nombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         return nombres[dia] ?? '';
@@ -371,7 +378,6 @@ export default function FichaComercioScreen() {
                 </View>
             )}
 
-            {/* 2. Cabecera + Botón Favorito */}
             <View style={styles.header}>
                 <View style={styles.headerTopRow}>
                     <View style={{ flex: 1, paddingRight: 10 }}>
@@ -394,19 +400,20 @@ export default function FichaComercioScreen() {
                 <View style={styles.puntajeRow}>
                     <Text style={styles.estrellas}>★ {(comercio.puntaje ?? 0).toFixed(1)}</Text>
                     <Text style={styles.resenas}>({comercio.cantidadResenas ?? 0} opiniones)</Text>
-                    {comercio.activo ? (
-                        <View style={styles.badgeAbierto}>
-                            <Text style={styles.badgeAbiertoTexto}>Abierto</Text>
-                        </View>
-                    ) : (
-                        <View style={styles.badgeCerrado}>
-                            <Text style={styles.badgeCerradoTexto}>Cerrado temporalmente</Text>
-                        </View>
-                    )}
+                    <View style={estadoHorario.abierto ? styles.badgeAbierto : styles.badgeCerrado}>
+                        <Text
+                            style={
+                                estadoHorario.abierto
+                                    ? styles.badgeAbiertoTexto
+                                    : styles.badgeCerradoTexto
+                            }
+                        >
+                            {estadoHorario.mensaje}
+                        </Text>
+                    </View>
                 </View>
             </View>
 
-            {/* 3. Botonera nativa (Linking) */}
             <View style={styles.botonera}>
                 <Pressable style={styles.botonAccion} onPress={handleLlamar}>
                     <Text style={styles.botonAccionTexto}>Llamar</Text>
@@ -419,7 +426,6 @@ export default function FichaComercioScreen() {
                 </Pressable>
             </View>
 
-            {/* 4. Descripción */}
             <View style={styles.seccion}>
                 <Text style={styles.seccionTitulo}>Acerca del comercio</Text>
                 <Text style={styles.descripcion}>
@@ -427,7 +433,6 @@ export default function FichaComercioScreen() {
                 </Text>
             </View>
 
-            {/* 5. Tags de Productos (Desplegable) */}
             <View style={styles.seccion}>
                 <TouchableOpacity
                     style={styles.seccionHeaderBtn}
@@ -463,7 +468,6 @@ export default function FichaComercioScreen() {
                 )}
             </View>
 
-            {/* 6. Promociones del local */}
             {promociones.length > 0 && (
                 <View style={styles.seccion}>
                     <Text style={styles.seccionTitulo}>Promociones vigentes</Text>
@@ -499,10 +503,18 @@ export default function FichaComercioScreen() {
                 </View>
             )}
 
-            {/* 7. Horarios */}
             <View style={styles.seccion}>
                 <Text style={styles.seccionTitulo}>Horarios de atención</Text>
-                {horariosAgrupados.length > 0 ? (
+                {estaDeVacaciones ? (
+                    <Text
+                        style={[
+                            styles.sinDatosTexto,
+                            { color: '#C0392B', fontStyle: 'normal', fontWeight: '600' },
+                        ]}
+                    >
+                        Cerrado temporalmente por vacaciones.
+                    </Text>
+                ) : horariosAgrupados.length > 0 ? (
                     horariosAgrupados.map((item) => (
                         <View key={item.dia} style={styles.horarioFila}>
                             <Text style={styles.horarioDia}>{formatearDia(item.dia)}</Text>
@@ -514,7 +526,6 @@ export default function FichaComercioScreen() {
                 )}
             </View>
 
-            {/* 8. Medios de pago */}
             <View style={styles.seccion}>
                 <Text style={styles.seccionTitulo}>Medios de pago aceptados</Text>
                 {mediosDePago.length > 0 ? (
@@ -530,11 +541,9 @@ export default function FichaComercioScreen() {
                 )}
             </View>
 
-            {/* 9. Reseñas y Calificaciones */}
             <View style={styles.seccion}>
                 <Text style={styles.seccionTitulo}>Opiniones de vecinos ({resenas.length})</Text>
 
-                {/* Formulario para Vecino (crear o editar su reseña) */}
                 {usuario?.rol === 'vecino' && (!miResena || editandoResenaId) && (
                     <View style={styles.formResenaBox}>
                         <Text style={styles.formResenaLabel}>
@@ -597,7 +606,6 @@ export default function FichaComercioScreen() {
                     </View>
                 )}
 
-                {/* Listado de reseñas */}
                 {resenas.length === 0 ? (
                     <Text style={styles.sinDatosTexto}>
                         Todavía no hay opiniones para este comercio.
@@ -619,7 +627,6 @@ export default function FichaComercioScreen() {
 
                                 <Text style={styles.resenaComentario}>{r.comentario}</Text>
 
-                                {/* Respuesta del comercio */}
                                 {r.respuesta ? (
                                     <View style={styles.respuestaComercioBox}>
                                         <Text style={styles.respuestaComercioTitulo}>
@@ -631,7 +638,6 @@ export default function FichaComercioScreen() {
                                     </View>
                                 ) : null}
 
-                                {/* Acciones según rol */}
                                 <View style={styles.resenaAccionesRow}>
                                     {esMia && (
                                         <>
@@ -672,7 +678,6 @@ export default function FichaComercioScreen() {
                                     )}
                                 </View>
 
-                                {/* Caja de respuesta rápida del comercio */}
                                 {esDuenoComercio && respondiendoId === r.id && (
                                     <View style={styles.responderBox}>
                                         <TextInput
@@ -706,7 +711,6 @@ export default function FichaComercioScreen() {
                 )}
             </View>
 
-            {/* Modal de cupón generado */}
             <Modal
                 visible={Boolean(cuponActivo)}
                 transparent
@@ -758,9 +762,9 @@ const styles = StyleSheet.create({
     },
     nombre: { fontSize: 22, fontWeight: 'bold', color: '#1A1A1A' },
     direccion: { fontSize: 14, color: '#666', marginTop: 4 },
-    puntajeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-    estrellas: { color: '#F39C12', fontWeight: 'bold', marginRight: 6 },
-    resenas: { color: '#888', fontSize: 13, marginRight: 12 },
+    puntajeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 },
+    estrellas: { color: '#F39C12', fontWeight: 'bold', marginRight: 2 },
+    resenas: { color: '#888', fontSize: 13, marginRight: 6 },
     badgeAbierto: { backgroundColor: '#E8F8F5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
     badgeAbiertoTexto: { color: '#27AE60', fontSize: 12, fontWeight: 'bold' },
     badgeCerrado: { backgroundColor: '#FDEDEC', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
@@ -930,4 +934,4 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#334155',
     },
-}); 
+});

@@ -614,7 +614,7 @@ export default function PantallaMe() {
                 onChangeText={setTelComercio}
               />
 
-              <Text style={styles.inputLabel}>WhatsApp (ej: 5493442...)</Text>
+              <Text style={styles.inputLabel}>WhatsApp</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="phone-pad"
@@ -631,7 +631,19 @@ export default function PantallaMe() {
                 </View>
                 <Switch
                   value={cerradoVacaciones}
-                  onValueChange={setCerradoVacaciones}
+                  onValueChange={async (nuevoValor) => {
+                    setCerradoVacaciones(nuevoValor);
+                    Haptics.selectionAsync();
+                    try {
+                      const res = await servicioMiComercio.actualizar({
+                        cerradoHasta: nuevoValor ? '2026-12-31' : null,
+                      });
+                      setMiComercio(res.datos);
+                    } catch (e: any) {
+                      setCerradoVacaciones(!nuevoValor);
+                      Alert.alert('Error', e?.error?.mensaje || 'No se pudo actualizar el estado.');
+                    }
+                  }}
                   trackColor={{ false: '#CBD5E1', true: '#FCA5A5' }}
                   thumbColor={cerradoVacaciones ? '#DC2626' : '#F1F5F9'}
                 />
@@ -795,7 +807,7 @@ export default function PantallaMe() {
           />
         </View>
         <TouchableOpacity style={styles.secondaryBtn} onPress={handleProbarRecordatorioLocal}>
-          <Text style={styles.secondaryBtnText}>🔔 Probar alerta local (promo por vencer)</Text>
+          <Text style={styles.secondaryBtnText}>🔔 Probar alerta local</Text>
         </TouchableOpacity>
       </View>
 

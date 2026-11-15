@@ -33,7 +33,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
+          "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#1E3A8A"
         }
@@ -42,7 +42,9 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "enableMinifyInReleaseBuilds": false,
+            "extraProguardRules": "-keep class * extends androidx.room.RoomDatabase { *; }\n-keep @androidx.room.Entity class * { *; }\n-keep class androidx.work.** { *; }\n-dontwarn androidx.room.**"
           }
         }
       ],

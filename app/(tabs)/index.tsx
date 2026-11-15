@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,14 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Storage from 'expo-sqlite/kv-store';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Comercio, Rubro } from '../../src/tipos';
 import { servicioComercios } from '../../src/servicios/comercios';
-import { estaAbiertoAhora } from '../../src/utils/horarios';
+import { estaAbiertoAhora, EstadoHorario } from '../../src/utils/horarios';
 import { obtenerTagsProductos } from '../../src/utils/productos';
 
 const normalizarTexto = (texto: string): string =>
@@ -27,6 +27,15 @@ const normalizarTexto = (texto: string): string =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+function obtenerEstadoComercio(comercio: Comercio): EstadoHorario {
+  const estaDeVacaciones = Boolean(
+    (comercio as Comercio & { cerradoHasta?: string | null }).cerradoHasta
+  );
+  if (estaDeVacaciones) {
+    return { abierto: false, mensaje: 'Cerrado por vacaciones' };
+  }
+  return estaAbiertoAhora(comercio.horarios);
+}
 
 export default function PantallaDirectorio() {
   const router = useRouter();
@@ -53,14 +62,6 @@ export default function PantallaDirectorio() {
   const [codigoQrManual, setCodigoQrManual] = useState('');
   const [buscandoQr, setBuscandoQr] = useState(false);
 
-  useEffect(() => {
-    cargarRubros();
-  }, []);
-
-  useEffect(() => {
-    cargarComercios();
-  }, [rubroSeleccionado]);
-
   const cargarRubros = async () => {
     try {
       const res = await servicioComercios.obtenerRubros();
@@ -70,7 +71,7 @@ export default function PantallaDirectorio() {
     }
   };
 
-  const cargarComercios = async () => {
+  const cargarComercios = useCallback(async () => {
     setCargando(true);
     setErrorMsg(null);
     try {
@@ -84,7 +85,17 @@ export default function PantallaDirectorio() {
     } finally {
       setCargando(false);
     }
-  };
+  }, [rubroSeleccionado]);
+
+  useEffect(() => {
+    cargarRubros();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarComercios();
+    }, [cargarComercios])
+  );
 
   const handleSeleccionarRubro = (idRubro: string) => {
     Haptics.selectionAsync();
@@ -134,7 +145,7 @@ export default function PantallaDirectorio() {
   const terminoNormalizado = normalizarTexto(busqueda.trim());
 
   const comerciosFiltrados = comercios.filter((comercio) => {
-    if (soloAbiertos && !estaAbiertoAhora(comercio.horarios).abierto) {
+    if (soloAbiertos && !obtenerEstadoComercio(comercio).abierto) {
       return false;
     }
 
@@ -157,7 +168,7 @@ export default function PantallaDirectorio() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar local o producto (ej: queso, pintura)..."
+          placeholder="Buscar local o producto: 'queso, pintura, otro'"
           value={busqueda}
           onChangeText={setBusqueda}
           placeholderTextColor="#94A3B8"
@@ -250,7 +261,7 @@ export default function PantallaDirectorio() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
-            const estado = estaAbiertoAhora(item.horarios);
+            const estado = obtenerEstadoComercio(item);
             const tags = obtenerTagsProductos(item);
             const tagCoincidente = terminoNormalizado
               ? tags.find((t) => normalizarTexto(t).includes(terminoNormalizado))
@@ -266,7 +277,7 @@ export default function PantallaDirectorio() {
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>{item.nombre}</Text>
-                  <Text style={styles.cardPuntaje}>★ {item.puntaje.toFixed(1)}</Text>
+                  <Text style={styles.cardPuntaje}>★ {(item.puntaje ?? 0).toFixed(1)}</Text>
                 </View>
                 <Text style={styles.cardDireccion}>{item.direccion}</Text>
 
